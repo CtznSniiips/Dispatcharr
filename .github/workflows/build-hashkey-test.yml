@@ -1,0 +1,44 @@
+# .github/workflows/build-hashkey-test.yml
+name: Build hash-key-override test image
+
+on:
+  push:
+    branches:
+      - feature/m3u-hash-key-override
+  workflow_dispatch: {}   # lets you re-run manually from the Actions tab
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Convert repository name to lowercase
+        run: echo "REPO_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Build and push test image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          # amd64 only - this is a personal test image, not a release.
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/${{ env.REPO_NAME }}:hashkey-test
+            ghcr.io/${{ env.REPO_NAME }}:${{ github.sha }}
